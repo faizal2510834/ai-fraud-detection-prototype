@@ -298,6 +298,55 @@ async def analyze_layer2(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Vision Error: {str(e)}")
 
+class WebhookPayload(BaseModel):
+    dispute_id: str
+    order_id: str
+    user_id: str
+    reason: str
+    evidence_score: float
+
+def ce_3_0_matching_logic(evidence_score: float, reason: str) -> dict:
+    """
+    Mock Confidence Engine (CE) 3.0 Matching Logic.
+    Calculates a fraud confidence score based on the evidence and reason.
+    Returns whether to auto-block the user.
+    """
+    base_confidence = evidence_score * 100
+    
+    # Heuristics based on reason
+    if reason.lower() in ["empty_box", "wrong_item"]:
+        base_confidence += 15.0
+    elif reason.lower() == "item_defective":
+        base_confidence -= 10.0
+        
+    confidence_score = min(max(base_confidence, 0.0), 100.0)
+    
+    # CE 3.0 Threshold: Auto-block if confidence score > 85%
+    auto_block = confidence_score >= 85.0
+    
+    return {
+        "confidence_score": round(confidence_score, 2),
+        "auto_block": auto_block,
+        "ce_version": "3.0"
+    }
+
+@app.post("/api/v1/dispute-webhook")
+async def dispute_webhook(payload: WebhookPayload):
+    """
+    Webhook endpoint to receive dispute events from payment processors.
+    Utilizes CE 3.0 matching logic to determine if a user should be auto-blocked.
+    """
+    ce_result = ce_3_0_matching_logic(payload.evidence_score, payload.reason)
+    
+    response = {
+        "status": "received",
+        "dispute_id": payload.dispute_id,
+        "action_taken": "user_blocked" if ce_result["auto_block"] else "flagged_for_review",
+        "ce_analysis": ce_result
+    }
+    
+    return response
+
 app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
