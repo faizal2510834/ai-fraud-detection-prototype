@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Retail - Return Verification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --bg-color: #f7f9fc;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #2563eb;
+            --danger: #ef4444;
+            --border: #e5e7eb;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; padding-bottom: 50px; }
+        
+        nav { background: var(--card-bg); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        nav .brand { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        nav .links { display: flex; gap: 30px; }
+        nav .links a { text-decoration: none; color: var(--text-main); font-weight: 600; transition: color 0.2s; }
+        nav .links a:hover { color: var(--accent); }
+        
+        .container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        
+        h1 { font-size: 2rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.5px; text-align: center; }
+        p.sub { color: var(--text-muted); text-align: center; margin-bottom: 30px; font-size: 1.1rem; }
+        
+        /* Layer 1 Styles */
+        #layer1 { display: block; }
+        .file-upload { border: 2px dashed #cbd5e1; padding: 40px 20px; text-align: center; border-radius: 12px; margin: 20px 0; background: #f8fafc; transition: border-color 0.2s; }
+        .file-upload:hover { border-color: var(--accent); }
+        .file-upload input { display: none; }
+        .upload-btn { background: white; color: var(--text-main); border: 1px solid var(--border); padding: 10px 20px; border-radius: 6px; cursor: pointer; display: inline-block; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background 0.2s; }
+        .upload-btn:hover { background: #f1f5f9; }
+        
+        .btn-action { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 6px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; width: 100%; margin-top: 10px; }
+        .btn-action:hover { background: #333; }
+        .btn-action:disabled { background: #cbd5e1; cursor: not-allowed; }
+        
+        /* Layer 2 Styles */
+        #layer2 { display: none; text-align: center; }
+        .warning-box { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 600; }
+        .instruction { font-size: 1.1rem; margin-bottom: 25px; }
+        .code-display { font-size: 2.5rem; font-weight: 700; letter-spacing: 8px; background: #f1f5f9; padding: 15px 20px; border-radius: 8px; display: inline-block; margin: 15px 0; border: 1px dashed #cbd5e1; color: var(--accent); }
+        
+        #video-container { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; aspect-ratio: 4/3; }
+        video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .timer { font-size: 1.2rem; font-weight: 700; color: var(--danger); margin-bottom: 20px; background: #fef2f2; display: inline-block; padding: 5px 15px; border-radius: 20px; }
+        #try-again-btn { background: white; color: var(--text-main); border: 1px solid var(--border); display: none; margin-top: 15px; }
+        
+        /* Success Message */
+        #success-message { display: none; text-align: center; }
+        .success-icon { font-size: 4rem; margin-bottom: 20px; display: block; }
+        
+        /* Loader */
+        #loader { display: none; text-align: center; padding: 40px; color: var(--text-muted); font-weight: 600; }
+        
+        .back-link { display: inline-block; margin-bottom: 20px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .back-link:hover { color: var(--primary); }
+    </style>
+    <!-- Include piexifjs for EXIF manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.js"></script>
+</head>
+<body>
+
+<nav>
+    <div class="brand">Aura Retail.</div>
+    <div class="links">
+        <a href="store.html">Store</a>
+        <a href="orders.html">My Orders</a>
+    </div>
+</nav>
+
+<div class="container">
+    <a href="orders.html" class="back-link">&larr; Cancel Return</a>
+    <div class="card">
+        
+        <div id="loader">Processing your request...</div>
+
+        <!-- Layer 1: The Initial Filter -->
+        <div id="layer1">
+            <h1>Upload Photo</h1>
+            <p class="sub">Please upload a clear photo of the item you are returning.</p>
+            
+            <div class="file-upload">
+                <label for="damage-upload" class="upload-btn">Browse Files</label>
+                <input type="file" id="damage-upload" accept="image/*">
+                <p id="file-name" style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">No file selected</p>
+            </div>
+            <button id="submit-layer1" class="btn-action" style="display: none;">Submit Photo</button>
+        </div>
+
+        <!-- Layer 2: The Proof of Life Trap -->
+        <div id="layer2">
+            <div class="warning-box">⚠️ Additional Verification Required</div>
+            <div class="instruction">
+                Please physically write this code on a piece of paper and photograph it <strong>next to the item</strong>.
+                <br>
+                <div class="code-display" id="dynamic-code">----</div>
+            </div>
+            
+            <div id="video-container">
+                <video id="webcam" autoplay playsinline></video>
+            </div>
+            
+            <div class="timer">Time remaining: <span id="time-left">60</span>s</div>
+            
+            <button id="capture-btn" class="btn-action">Capture & Verify</button>
+            <button id="try-again-btn" class="btn-action">Session Expired - Try Again</button>
+            
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+
+        <!-- Success Output -->
+        <div id="success-message">
+            <span class="success-icon">✅</span>
+            <h1>Verification Successful</h1>
+            <p class="sub" id="success-text">Your return has been processed and verified.</p>
+            <a href="orders.html" class="btn-action" style="display: inline-block; text-decoration: none; text-align: center; box-sizing: border-box;">Back to Orders</a>
+        </div>
+    </div>
+</div>
+
+<script src="app.js?v=6"></script>
+</body>
+</html>

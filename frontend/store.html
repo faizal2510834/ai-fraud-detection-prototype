@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Retail - Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --bg-color: #f7f9fc;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; padding-bottom: 50px; }
+        
+        /* Navbar */
+        nav { background: var(--card-bg); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        nav .brand { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        nav .links { display: flex; gap: 30px; }
+        nav .links a { text-decoration: none; color: var(--text-main); font-weight: 600; transition: color 0.2s; }
+        nav .links a:hover, nav .links a.active { color: var(--accent); }
+        
+        /* Main Container */
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .header-title { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -1px; }
+        .header-sub { color: var(--text-muted); margin-bottom: 40px; font-size: 1.1rem; }
+        
+        /* Products Grid */
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .product-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        
+        .img-wrapper { position: relative; width: 100%; padding-top: 75%; /* 4:3 Aspect Ratio */ overflow: hidden; background: #eee; }
+        .img-wrapper img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .product-card:hover .img-wrapper img { transform: scale(1.05); }
+        
+        .p-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
+        .p-category { font-size: 0.8rem; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 5px; letter-spacing: 0.5px; }
+        .p-name { font-size: 1.2rem; font-weight: 600; margin-bottom: 10px; }
+        .p-price { font-size: 1.3rem; font-weight: 700; margin-top: auto; margin-bottom: 20px; }
+        
+        .btn-buy { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .btn-buy:hover { background: #333; }
+        
+        /* Toast Notification */
+        #toast { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 1000; font-weight: 600; }
+        #toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="brand">Aura Retail.</div>
+    <div class="links">
+        <a href="store.html" class="active">Store</a>
+        <a href="orders.html">My Orders</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1 class="header-title">New Arrivals</h1>
+    <p class="header-sub">Discover the latest premium products engineered for excellence.</p>
+    
+    <div class="products-grid" id="products-grid">
+        <!-- Products injected here -->
+        <p>Loading products...</p>
+    </div>
+</div>
+
+<div id="toast">Order Placed Successfully!</div>
+
+<script>
+    async function loadProducts() {
+        try {
+            const res = await fetch("/api/v1/products", {
+                headers: { "Bypass-Tunnel-Reminder": "true" }
+            });
+            const products = await res.json();
+            
+            const grid = document.getElementById("products-grid");
+            grid.innerHTML = "";
+            
+            products.forEach(p => {
+                const card = document.createElement("div");
+                card.className = "product-card";
+                card.innerHTML = `
+                    <div class="img-wrapper">
+                        <img src="${p.image}" alt="${p.name}">
+                    </div>
+                    <div class="p-content">
+                        <div class="p-category">${p.category}</div>
+                        <div class="p-name">${p.name}</div>
+                        <div class="p-price">$${p.price.toFixed(2)}</div>
+                        <button class="btn-buy" onclick="buyProduct('${p.id}')">Buy Now</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        } catch (e) {
+            console.error(e);
+            document.getElementById("products-grid").innerHTML = "<p>Failed to connect to backend.</p>";
+        }
+    }
+
+    async function buyProduct(productId) {
+        try {
+            const res = await fetch("/api/v1/orders", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Bypass-Tunnel-Reminder": "true"
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await res.json();
+            if (data.status === "success") {
+                showToast("Purchased! Added to My Orders.");
+            }
+        } catch (e) {
+            alert("Error: " + e.message + "\nOrder might have been placed. Check My Orders.");
+        }
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    loadProducts();
+</script>
+</body>
+</html>

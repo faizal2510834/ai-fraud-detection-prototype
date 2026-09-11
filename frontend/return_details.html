@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Retail - Return Initiation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --bg-color: #f7f9fc;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; padding-bottom: 50px; }
+        
+        nav { background: var(--card-bg); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        nav .brand { font-size: 1.5rem; font-weight: 700; }
+        nav .links a { text-decoration: none; color: var(--text-muted); font-weight: 600; margin-left: 30px; }
+        
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border); }
+        
+        h1 { margin-bottom: 10px; font-size: 2rem; letter-spacing: -0.5px; }
+        p.sub { color: var(--text-muted); margin-bottom: 30px; }
+        
+        .product-summary { display: flex; align-items: center; padding: 20px; background: #f9fafb; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--border); }
+        .product-summary img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 20px; }
+        .product-summary h3 { margin-bottom: 5px; }
+        
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; }
+        .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 1rem; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 6px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; width: 100%; }
+        .btn-submit:hover { background: #333; }
+        
+        .back-link { display: inline-block; margin-bottom: 20px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .back-link:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="brand">Aura Retail.</div>
+    <div class="links">
+        <a href="store.html">Store</a>
+        <a href="orders.html">My Orders</a>
+    </div>
+</nav>
+
+<div class="container">
+    <a href="orders.html" class="back-link">&larr; Back to Orders</a>
+    
+    <div class="card">
+        <h1>Initiate Return</h1>
+        <p class="sub">Please tell us why you are returning this item so we can improve our service.</p>
+        
+        <div class="product-summary" id="product-summary">
+            Loading order details...
+        </div>
+        
+        <form id="return-form">
+            <div class="form-group">
+                <label for="reason">Reason for Return</label>
+                <select id="reason" required>
+                    <option value="">Select a reason...</option>
+                    <option value="Damaged/Defective">Damaged or Defective</option>
+                    <option value="Wrong Item">Wrong item sent</option>
+                    <option value="Not as Described">Not as described</option>
+                    <option value="Changed Mind">Changed my mind</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="comments">Additional Comments (Optional)</label>
+                <textarea id="comments" placeholder="Please provide any additional details..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit">Continue to Verification</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    
+    if (!orderId) {
+        alert("No order specified.");
+        window.location.href = "orders.html";
+    }
+
+    async function loadOrder() {
+        try {
+            const res = await fetch(`/api/v1/orders/${orderId}`, {
+                headers: { "Bypass-Tunnel-Reminder": "true" }
+            });
+            if (!res.ok) throw new Error("Order not found");
+            const order = await res.json();
+            
+            document.getElementById("product-summary").innerHTML = `
+                <img src="${order.image}" alt="${order.product_name}">
+                <div>
+                    <h3>${order.product_name}</h3>
+                    <p style="color: #666; font-size: 0.9rem;">Order ID: ${order.order_id}</p>
+                </div>
+            `;
+        } catch (e) {
+            alert("Error loading order details.");
+            window.location.href = "orders.html";
+        }
+    }
+    
+    document.getElementById("return-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const reason = document.getElementById("reason").value;
+        const comments = document.getElementById("comments").value;
+        
+        // Redirect to index.html with the new clarification layer data
+        window.location.href = `index.html?v=6&order_id=${encodeURIComponent(orderId)}&reason=${encodeURIComponent(reason)}&comments=${encodeURIComponent(comments)}`;
+    });
+
+    loadOrder();
+</script>
+
+</body>
+</html>
