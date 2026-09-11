@@ -39,4 +39,5 @@ This repository contains the prototype for a multi-layered AI-powered fraud dete
 
 ## Testing
 - **Unit Tests for CE 3.0:** Run `python backend/test_ce_matching.py`
+Try uploading 
 - **Simulate Webhook Flow:** Run `python demo/simulate_webhook.py` to test the auto-block mechanics.

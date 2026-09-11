@@ -138,18 +138,50 @@ async def analyze_layer1(
     try:
         image = Image.open(io.BytesIO(contents))
         
-        # 1. Visual Verification using Gemini
+        # 1. Visual & Metadata Verification using Gemini
         if not client:
              raise Exception("Missing GEMINI_API_KEY environment variable.")
+             
+        # Extract EXIF metadata into text
+        exif_data = image.getexif()
+        exif_text = "No EXIF data found."
+        
+        if exif_data:
+            exif_lines = ["--- 0th IFD ---"]
+            for k, v in exif_data.items():
+                exif_lines.append(f"Tag {k}: {str(v)[:100]}")
+                
+            exif_ifd = exif_data.get_ifd(0x8769)
+            if exif_ifd:
+                exif_lines.append("--- Exif IFD ---")
+                for k, v in exif_ifd.items():
+                    exif_lines.append(f"Tag {k}: {str(v)[:100]}")
+            exif_text = "\n".join(exif_lines)
+            
+        print(f"--- Extracted EXIF for Gemini ---")
+        print(exif_text)
+        print(f"---------------------------------")
              
         prompt = f'''
         You are a strict fraud detection AI for a premium retail platform. I am verifying an online return for the product: '{product_name}'.
         
-        Analyze this image and answer the following:
-        1. Is the product '{product_name}' (or something closely resembling it from the same category) clearly visible in the image?
+        I have provided an image of the returned item AND the extracted EXIF metadata from the image file.
         
-        If true, respond EXACTLY and ONLY with the word "APPROVED".
-        If false, respond with a short explanation of what is missing or incorrect, starting with "REJECTED: ". Be very strict.
+        EXIF METADATA:
+        {exif_text}
+        
+        Analyze both the image and the metadata and answer the following:
+        1. VISUAL: Is the product '{product_name}' (or something closely resembling it from the same category) clearly visible in the image?
+        2. HARDWARE: Does the EXIF metadata prove this is a RAW physical photo and NOT a screenshot? 
+           CRITICAL: Screenshots on Android/iOS often contain basic EXIF data like Date (Tag 36867) or Software (Tag 305). However, REAL photos MUST contain optical lens parameters, specifically:
+           - ExposureTime (Tag 33434)
+           - FNumber / Aperture (Tag 33437)
+           - ISOSpeedRatings (Tag 34855)
+           - FocalLength (Tag 37386)
+           If these optical tags are missing, it is a SCREENSHOT or manipulated image.
+        
+        If BOTH visual and hardware checks pass (i.e. product matches AND optical EXIF tags are present), respond EXACTLY and ONLY with the word "APPROVED".
+        If EITHER check fails, respond with a short explanation of what is missing or suspicious (e.g. "REJECTED: Product mismatch", "REJECTED: Missing optical EXIF tags (ExposureTime, FNumber), likely a screenshot"). Be very strict.
         '''
         
         response = client.models.generate_content(
@@ -161,24 +193,9 @@ async def analyze_layer1(
         )
         
         result_text = response.text.strip()
-        if not result_text.startswith("APPROVED"):
-            raise HTTPException(status_code=403, detail=f"Visual Verification Failed. {result_text}")
-            
-        # 2. EXIF Match Check (Hardware tags)
-        has_hardware_tags = False
-        exif_data = image.getexif()
+        print(f"Gemini Layer 1 Decision: {result_text}")
         
-        if exif_data:
-            # Check 0th IFD for Make (271), Model (272)
-            has_hardware_tags = any(tag in exif_data for tag in [271, 272])
-            
-            # Check Exif IFD for FNumber (33437), ExposureTime (33434), ISOSpeedRatings (34855), FocalLength (37386)
-            if not has_hardware_tags:
-                exif_ifd = exif_data.get_ifd(0x8769)
-                if exif_ifd:
-                    has_hardware_tags = any(tag in exif_ifd for tag in [33434, 33437, 34855, 37386])
-                    
-        if has_hardware_tags:
+        if result_text.startswith("APPROVED"):
             ORDERS_DB[order_id]["status"] = "Returned"
             return {"status": "approved", "message": "Refund processed."}
             
@@ -187,7 +204,7 @@ async def analyze_layer1(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Analysis Error: {str(e)}")
     
-    # Missing EXIF -> trap
+    # Missing EXIF or Visual failure -> trap to layer 2
     session_id = str(uuid.uuid4())
     code = generate_code()
     sessions[session_id] = {
@@ -201,7 +218,8 @@ async def analyze_layer1(
         "status": "challenge_required",
         "session_id": session_id,
         "code": code,
-        "timeout": 60
+        "timeout": 60,
+        "reason_rejected": result_text if not result_text.startswith("APPROVED") else "System check failed"
     }
 
 @app.get("/api/v1/refresh-session/{session_id}")

@@ -23,17 +23,17 @@ def simulate_webhook(reason: str, evidence_score: float):
         response.raise_for_status()
         
         result = response.json()
-        print("\n[✓] Webhook Response Received:")
+        print("\n[OK] Webhook Response Received:")
         print(json.dumps(result, indent=2))
         
         ce_analysis = result.get("ce_analysis", {})
         if result.get("action_taken") == "user_blocked":
-            print(f"\n🚨 AUTO-BLOCK TRIGGERED! Confidence Score: {ce_analysis.get('confidence_score')}%")
+            print(f"\n[ALERT] AUTO-BLOCK TRIGGERED! Confidence Score: {ce_analysis.get('confidence_score')}%")
         else:
-            print(f"\n⚠️ Flagged for Review. Confidence Score: {ce_analysis.get('confidence_score')}%")
+            print(f"\n[WARN] Flagged for Review. Confidence Score: {ce_analysis.get('confidence_score')}%")
             
     except requests.exceptions.RequestException as e:
-        print(f"\n[✗] Webhook Simulation Failed: {e}")
+        print(f"\n[FAIL] Webhook Simulation Failed: {e}")
 
 if __name__ == "__main__":
     print("--- CE 3.0 Fraud Webhook Simulation ---")
